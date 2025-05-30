@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import { userRepository } from "./repositories/userRepository";
 import { sharedItemRepository } from "./repositories/sharedItemRepository";
 import { ratingRepository } from "./repositories/ratingRepository";
+import { reportRepository } from "./repositories/reportRepository";
+import { commentRepository } from "./repositories/commentRepository";
 
 dotenv.config();
 
@@ -181,6 +183,169 @@ app.post(
   }
 );
 
-const server = app.listen(3000, () =>
-  console.log("Server ready at: http://localhost:3000")
+// MODERATION ENDPOINTS
+
+// Report a post
+app.post(
+  "/reports/post",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const { postId, reason, description } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId || !postId || !reason) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    try {
+      const report = await reportRepository.create({
+        reporter_id: userId,
+        reported_item_id: parseInt(postId),
+        reason,
+        description: description || null,
+      });
+
+      if (!report) {
+        res.status(500).json({ error: "Failed to create report" });
+        return;
+      }
+
+      res.json({ message: "Report submitted successfully", report });
+    } catch (error) {
+      console.error("Error creating post report:", error);
+      res.status(500).json({ error: "Failed to submit report" });
+    }
+  }
+);
+
+// Report a comment
+app.post(
+  "/reports/comment",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const { commentId, reason, description } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId || !commentId || !reason) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    try {
+      const report = await reportRepository.create({
+        reporter_id: userId,
+        reported_comment_id: parseInt(commentId),
+        reason,
+        description: description || null,
+      });
+
+      if (!report) {
+        res.status(500).json({ error: "Failed to create report" });
+        return;
+      }
+
+      res.json({ message: "Report submitted successfully", report });
+    } catch (error) {
+      console.error("Error creating comment report:", error);
+      res.status(500).json({ error: "Failed to submit report" });
+    }
+  }
+);
+
+// Report a user
+app.post(
+  "/reports/user",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const { userId: reportedUserId, reason, description } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId || !reportedUserId || !reason) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    try {
+      const report = await reportRepository.create({
+        reporter_id: userId,
+        reported_user_id: reportedUserId,
+        reason,
+        description: description || null,
+      });
+
+      if (!report) {
+        res.status(500).json({ error: "Failed to create report" });
+        return;
+      }
+
+      res.json({ message: "Report submitted successfully", report });
+    } catch (error) {
+      console.error("Error creating user report:", error);
+      res.status(500).json({ error: "Failed to submit report" });
+    }
+  }
+);
+
+// Delete comment (for comment authors or post owners)
+app.delete(
+  "/comments/:commentId",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const { commentId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+
+    try {
+      // Check if user can delete this comment
+      const canDelete = await commentRepository.canUserDeleteComment(
+        parseInt(commentId),
+        userId
+      );
+
+      if (!canDelete) {
+        res.status(403).json({ 
+          error: "You can only delete your own comments or comments on your posts" 
+        });
+        return;
+      }
+
+      const success = await commentRepository.delete(parseInt(commentId));
+
+      if (!success) {
+        res.status(500).json({ error: "Failed to delete comment" });
+        return;
+      }
+
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  }
+);
+
+// Get reports (for admin/moderation purposes)
+app.get(
+  "/reports",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const { status = 'pending' } = req.query;
+    
+    try {
+      const reports = await reportRepository.getByStatus(status as string);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ error: "Failed to fetch reports" });
+    }
+  }
+);
+
+const server = app.listen(process.env.PORT || 3001, () =>
+  console.log(`Server ready at: http://localhost:${process.env.PORT || 3001}`)
 );

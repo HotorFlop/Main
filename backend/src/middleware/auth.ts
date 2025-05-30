@@ -3,8 +3,7 @@ import jwt from "jsonwebtoken";
 import { supabase } from "../services/db";
 import { userRepository } from "../repositories/userRepository";
 
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
-
+// Use Supabase service to verify tokens instead of manual JWT verification
 declare global {
   namespace Express {
     interface Request {
@@ -23,7 +22,6 @@ export const authenticateToken = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  //bearer token
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 
@@ -33,30 +31,31 @@ export const authenticateToken = async (
   }
 
   try {
-    if (!JWT_SECRET) {
-      throw new Error("no JWT_SECRET in env");
+    // Use Supabase to verify the token
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.error("Supabase auth error:", error);
+      res.status(403).json({ error: "Invalid or expired token" });
+      return;
     }
-    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
-    if (decoded.sub) {
-      const user = await userRepository.findById(decoded.sub);
-
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      req.user = {
-        id: decoded.sub,
-        email: decoded.email || "",
-        role: decoded.role,
-      };
-
-      req.token = token;
-      next();
-    } else {
-      throw new Error("Invalid token payload");
+    // Check if user exists in our database
+    const dbUser = await userRepository.findById(user.id);
+    
+    if (!dbUser) {
+      res.status(404).json({ error: "User not found in database" });
+      return;
     }
+
+    req.user = {
+      id: user.id,
+      email: user.email || "",
+      role: user.role || "user",
+    };
+
+    req.token = token;
+    next();
   } catch (error) {
     console.error("Token verification error:", error);
     res.status(403).json({ error: "Invalid or expired token" });
@@ -71,7 +70,7 @@ export const optionalAuthenticate = async (
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 
-  // should default optional authenticat to a fake user
+  // Default to a fake user if no token provided
   if (!token) {
     req.user = {
       id: "9b83d9e8-af41-4440-a056-02be1faa8cca",
@@ -83,25 +82,22 @@ export const optionalAuthenticate = async (
   }
 
   try {
-    if (!JWT_SECRET) {
-      next();
-      return;
-    }
-    const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
-    if (decoded.sub) {
-      const user = await userRepository.findById(decoded.sub);
+    // Use Supabase to verify the token
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-      if (user) {
+    if (!error && user) {
+      const dbUser = await userRepository.findById(user.id);
+      
+      if (dbUser) {
         req.user = {
-          id: decoded.sub,
-          email: decoded.email || "",
-          role: decoded.role,
+          id: user.id,
+          email: user.email || "",
+          role: user.role || "user",
         };
         req.token = token;
       }
     }
   } catch (error) {
-    // just proceed even if token is invalid
     console.warn("Token verification warning:", error);
   }
 

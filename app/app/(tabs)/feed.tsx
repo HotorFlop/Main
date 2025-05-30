@@ -21,10 +21,12 @@ import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Stack } from "expo-router";
 import { SvgXml } from "react-native-svg";
 import CommentsModal from "../../components/CommentsModal";
+import ReportModal from "../../components/ReportModal";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
+import { moderationAPI } from "../../lib/moderation";
 // import { Product } from "../types/product";
 
 // You'll need to create these environment variables
@@ -58,10 +60,15 @@ interface UserDetails {
 interface Product {
   id: number;
   title: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number;
   no_count: number;
+  yes_count: number;
   total_count: number;
   url: string;
   user_id: string;
+  userId?: string; // For backward compatibility
   user: UserDetails;
 }
 
@@ -79,7 +86,7 @@ const isValidUrl = (string: string) => {
 
 export default function Feed() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasVoted, setHasVoted] = useState(false);
@@ -94,6 +101,7 @@ export default function Feed() {
   const [comments, setComments] = useState<{ [key: string]: Comment[] }>({});
   const [imageHeight, setImageHeight] = useState<number | null>(null);
   const [isCommentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [isReportModalVisible, setReportModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [votedItemIds, setVotedItemIds] = useState<number[]>([]);
   const [wishlistedItems, setWishlistedItems] = useState<number[]>([]);
@@ -289,14 +297,14 @@ export default function Feed() {
       ) {
         if (
           allProducts[i]?.imageUrl &&
-          !preloadedImages[allProducts[i].imageUrl]
+          !preloadedImages[allProducts[i].imageUrl!]
         ) {
           console.log(`Preloading image for product ${allProducts[i].id}`);
-          Image.prefetch(allProducts[i].imageUrl)
+          Image.prefetch(allProducts[i].imageUrl!)
             .then(() => {
               setPreloadedImages((prev) => ({
                 ...prev,
-                [allProducts[i].imageUrl]: true,
+                [allProducts[i].imageUrl!]: true,
               }));
             })
             .catch((err) => console.log("Failed to preload:", err));
@@ -692,6 +700,66 @@ export default function Feed() {
     }
   };
 
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      await moderationAPI.deleteComment(commentId, session?.access_token);
+      
+      // Remove comment from local state
+      setComments((prev) => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(productId => {
+          updated[productId] = updated[productId].filter(comment => comment.id !== commentId);
+        });
+        return updated;
+      });
+      
+      Alert.alert("Success", "Comment deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      Alert.alert("Error", "Failed to delete comment.");
+    }
+  };
+
+  const handleOpenCommentReport = (commentId: number) => {
+    console.log("Feed: Opening comment report alert for comment", commentId);
+    
+    Alert.prompt(
+      "Report Comment",
+      "Please select a reason for reporting this comment:",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Submit", 
+          onPress: async (reason) => {
+            if (!reason?.trim()) return;
+            try {
+              await moderationAPI.reportComment(commentId, reason, undefined, session?.access_token);
+              Alert.alert("Success", "Comment reported successfully.");
+            } catch (error) {
+              console.error("Feed: Error reporting comment:", error);
+              Alert.alert("Error", "Failed to report comment.");
+            }
+          }
+        },
+      ],
+      "plain-text",
+      "",
+      "default"
+    );
+  };
+
+  const handleReportPost = async (reason: string, description?: string) => {
+    if (!currentProduct) return;
+    
+    try {
+      await moderationAPI.reportPost(currentProduct.id, reason, description, session?.access_token);
+      Alert.alert("Success", "Post reported successfully.");
+    } catch (error) {
+      console.error("Error reporting post:", error);
+      Alert.alert("Error", "Failed to report post.");
+    }
+  };
+
   useEffect(() => {
     const fetchComments = async () => {
       if (!currentProduct) return;
@@ -768,7 +836,7 @@ export default function Feed() {
       }
 
       // Fetch new posts since the most recent one we've seen
-      const newPosts = await fetchFeedPosts(mostRecentPostTimestamp);
+      const newPosts = await fetchFeedPosts(null);
 
       console.log(`Found ${newPosts.length} new posts`);
 
@@ -1055,30 +1123,38 @@ export default function Feed() {
             ]}
             {...panResponder.panHandlers}
           >
-            <TouchableOpacity
-              style={styles.userContainer}
-              onPress={() => {
-                // Make sure we're passing the correct user_id parameter
-                router.push({
-                  pathname: "/friendprofile", // Change this to a different route
-                  params: { userId: currentProduct.user.id },
-                });
-              }}
-            >
-              <Image
-                source={getProfilePicUri(currentProduct?.user)}
-                style={styles.profilePic}
-                onError={(e) => {
-                  console.log(
-                    "Profile image failed to load:",
-                    e.nativeEvent.error
-                  );
+            <View style={styles.userHeaderContainer}>
+              <TouchableOpacity
+                style={styles.userContainer}
+                onPress={() => {
+                  // Make sure we're passing the correct user_id parameter
+                  router.push({
+                    pathname: "/friendprofile", // Change this to a different route
+                    params: { userId: currentProduct.user.id },
+                  });
                 }}
-              />
-              <Text style={styles.username}>
-                @{currentProduct.user.username}
-              </Text>
-            </TouchableOpacity>
+              >
+                <Image
+                  source={getProfilePicUri(currentProduct?.user)}
+                  style={styles.profilePic}
+                  onError={(e) => {
+                    console.log(
+                      "Profile image failed to load:",
+                      e.nativeEvent.error
+                    );
+                  }}
+                />
+                <Text style={styles.username}>
+                  @{currentProduct.user.username}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setReportModalVisible(true)}
+                style={styles.reportButton}
+              >
+                <FontAwesome name="flag" size={16} color="#666" />
+              </TouchableOpacity>
+            </View>
             <Stack.Screen options={{ headerShown: false }} />
             {/* <Text
                 style={styles.username}
@@ -1211,11 +1287,21 @@ export default function Feed() {
         visible={isCommentsModalVisible}
         comments={currentProduct ? comments[currentProduct.id] || [] : []}
         onClose={() => setCommentsModalVisible(false)}
+        postOwnerId={currentProduct?.user_id}
         addComment={(newComment) => {
           if (currentProduct) {
             handleAddComment(currentProduct.id, newComment);
           }
         }}
+        onDeleteComment={handleDeleteComment}
+        onReportComment={handleOpenCommentReport}
+      />
+
+      <ReportModal
+        visible={isReportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={handleReportPost}
+        title="Report Post"
       />
 
       {/* Results Overlay (After Voting) */}
@@ -1530,19 +1616,13 @@ const styles = StyleSheet.create({
   userContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    flex: 1, // Take up remaining space
   },
   userProfileImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 10,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: FONTS.mandali,
-    color: COLORS.black,
   },
   logoContainer: {
     marginTop: 20,
@@ -1569,5 +1649,14 @@ const styles = StyleSheet.create({
   activeActionText: {
     color: "#333",
     fontWeight: "600",
+  },
+  reportButton: {
+    padding: 8,
+    marginLeft: 8, // Small spacing from username
+  },
+  userHeaderContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
   },
 });

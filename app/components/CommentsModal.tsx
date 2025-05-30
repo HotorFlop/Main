@@ -1,3 +1,4 @@
+import React from "react";
 import {
   View,
   Modal,
@@ -8,10 +9,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { COLORS, FONTS, SPACING } from "../constants/theme";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 interface Comment {
   id: number;
@@ -29,6 +32,9 @@ interface CommentsModalProps {
   comments: Comment[];
   onClose: () => void;
   addComment: (comment: string) => void;
+  postOwnerId?: string; // ID of the post owner
+  onDeleteComment?: (commentId: number) => void;
+  onReportComment?: (commentId: number) => void; // Simplified to just pass commentId
 }
 
 export default function CommentsModal({
@@ -36,8 +42,12 @@ export default function CommentsModal({
   comments,
   onClose,
   addComment,
+  postOwnerId,
+  onDeleteComment,
+  onReportComment,
 }: CommentsModalProps) {
   const [newComment, setNewComment] = useState("");
+  const { user } = useAuth();
 
   const handleSubmitComment = () => {
     if (newComment.trim()) {
@@ -46,61 +56,109 @@ export default function CommentsModal({
     }
   };
 
+  const handleDeleteComment = (commentId: number) => {
+    Alert.alert(
+      "Delete Comment",
+      "Are you sure you want to delete this comment?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => onDeleteComment?.(commentId),
+        },
+      ]
+    );
+  };
+
+  const handleReportComment = (commentId: number) => {
+    console.log("CommentsModal: handleReportComment called", commentId);
+    if (onReportComment) {
+      onReportComment(commentId);
+    }
+  };
+
+  const canDeleteComment = (comment: Comment): boolean => {
+    if (!user?.id) return false;
+    // User can delete their own comments or comments on their posts
+    return comment.userId.toString() === user.id || postOwnerId === user.id;
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalContainer}
+    <>
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={onClose}
       >
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Comments</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <FontAwesome name="times" size={24} color={COLORS.accent} />
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Comments</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <FontAwesome name="times" size={24} color={COLORS.accent} />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.commentsContainer}>
-            {comments.map((comment) => (
-              <View key={comment.id} style={styles.commentItem}>
-                <Text style={styles.commentName}>@{comment.user.name}</Text>
-                <Text style={styles.commentText}>{comment.comment}</Text>
-                <Text style={styles.timestamp}>
-                  {formatTimestamp(comment.created_at)}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
+            <ScrollView style={styles.commentsContainer}>
+              {comments.map((comment) => (
+                <View key={comment.id} style={styles.commentItem}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentName}>@{comment.user.name}</Text>
+                    <View style={styles.commentActions}>
+                      {canDeleteComment(comment) && (
+                        <TouchableOpacity
+                          onPress={() => handleDeleteComment(comment.id)}
+                          style={styles.actionButton}
+                        >
+                          <FontAwesome name="trash" size={14} color="#ff4444" />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => handleReportComment(comment.id)}
+                        style={styles.actionButton}
+                      >
+                        <FontAwesome name="flag" size={14} color="#666" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <Text style={styles.commentText}>{comment.comment}</Text>
+                  <Text style={styles.timestamp}>
+                    {formatTimestamp(comment.created_at)}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={newComment}
-              onChangeText={setNewComment}
-              placeholder="Add a comment..."
-              placeholderTextColor="#999"
-              multiline
-            />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmitComment}
-            >
-              <Text style={styles.submitText}>Post</Text>
-            </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                value={newComment}
+                onChangeText={setNewComment}
+                placeholder="Add a comment..."
+                placeholderTextColor="#999"
+                multiline
+              />
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleSubmitComment}
+              >
+                <Text style={styles.submitText}>Post</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 
@@ -142,12 +200,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f8f8",
     borderRadius: 8,
   },
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   commentName: {
     fontSize: 14,
     fontWeight: "600",
     fontFamily: FONTS.mandali,
     color: COLORS.black,
-    marginBottom: 4,
+  },
+  commentActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionButton: {
+    padding: 4,
   },
   commentText: {
     fontSize: 14,

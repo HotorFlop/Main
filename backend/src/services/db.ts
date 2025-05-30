@@ -53,3 +53,17 @@ export interface Comment {
   comment: string | null;
   userId: string | null;
 }
+
+export interface Report {
+  id: number;
+  created_at: Date;
+  reporter_id: string;
+  reported_item_id?: number | null;
+  reported_comment_id?: number | null;
+  reported_user_id?: string | null;
+  reason: string;
+  description?: string | null;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reviewed_by?: string | null;
+  reviewed_at?: Date | null;
+}
