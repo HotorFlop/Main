@@ -141,7 +141,7 @@ export default function Friends() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      <TouchableOpacity onPress={() => router.push("./settings")} style={styles.backButton}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <FontAwesome name="arrow-left" size={22} color="white" />
       </TouchableOpacity>
       
