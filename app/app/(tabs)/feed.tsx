@@ -27,7 +27,6 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import { moderationAPI } from "../../lib/moderation";
-// import { Product } from "../types/product";
 
 // You'll need to create these environment variables
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -1014,7 +1013,7 @@ export default function Feed() {
   if (allProducts.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>No products available</Text>
+        <Text style={styles.defaultText}>Nothing to vote on! Check back later or add some friends!</Text>
       </View>
     );
   }
@@ -1282,6 +1281,20 @@ export default function Feed() {
           </Animated.View>
         )}
       </View>
+
+      {/* Swipe Indicators */}
+      {currentProduct && !hasVoted && (
+        <View style={styles.swipeIndicators}>
+          <View style={styles.swipeIndicator}>
+            <Text style={styles.swipeText}>Flop</Text>
+            {/* <FontAwesome name="arrow-left" size={24} style={styles.swipeArrow} /> */}
+          </View>
+          <View style={styles.swipeIndicator}>
+            {/* <FontAwesome name="arrow-right" size={24} style={styles.swipeArrow} /> */}
+            <Text style={styles.swipeText}>Hot</Text>
+          </View>
+        </View>
+      )}
 
       <CommentsModal
         visible={isCommentsModalVisible}
@@ -1659,4 +1672,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
+  swipeIndicators: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  swipeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  swipeText: {
+    fontSize: 23,
+    fontFamily: "Mandali",
+    fontWeight: "bold",
+    marginHorizontal: 8,
+    color: COLORS.accent,
+  },
+  swipeArrow: {
+    color: COLORS.accent,
+    marginBottom: 40,
+  },
+  defaultText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    fontFamily: "Mandali",
+    textAlign: "center",
+    marginTop: 100,
+    paddingTop: 200,
+  }
 });
