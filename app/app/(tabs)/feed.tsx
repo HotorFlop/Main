@@ -27,7 +27,6 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import { moderationAPI } from "../../lib/moderation";
-// import { Product } from "../types/product";
 
 // You'll need to create these environment variables
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -1014,7 +1013,7 @@ export default function Feed() {
   if (allProducts.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>No products available</Text>
+        <Text style={styles.defaultText}>Nothing to vote on! Check back later or add some friends!</Text>
       </View>
     );
   }
@@ -1694,4 +1693,13 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
     marginBottom: 40,
   },
+  defaultText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    fontFamily: "Mandali",
+    textAlign: "center",
+    marginTop: 100,
+    paddingTop: 200,
+  }
 });

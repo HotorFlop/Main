@@ -189,18 +189,18 @@ export default function Profile() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (isFocused) {
+    if (isFocused && user?.id) {
+      console.log("Profile screen focused, refreshing data for user:", user?.id);
+      // Always refresh data when screen comes into focus
+      debouncedFetchData();
+      
+      // Also check for new posts
       const checkForNewPosts = async () => {
         try {
           const lastPostTime = await AsyncStorage.getItem("lastPostCreated");
-
           if (lastPostTime && lastPostTime !== lastCheckTime) {
-            console.log(
-              "New post detected, refreshing profile for user:",
-              user?.id
-            );
+            console.log("New post detected during focus refresh");
             setLastCheckTime(lastPostTime);
-            debouncedFetchData();
           }
         } catch (error) {
           console.error("Error checking for new posts:", error);
