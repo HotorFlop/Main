@@ -96,6 +96,72 @@ const FrontContent = ({
   const { user } = useAuth();
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  // Check if item is already in wishlist
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!user?.id || !item?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("Wishlist")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("item_id", item.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { 
+          console.error("Error checking wishlist status:", error);
+          return;
+        }
+
+        setIsWishlisted(!!data);
+      } catch (error) {
+        console.error("Error checking wishlist status:", error);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [user?.id, item?.id]);
+
+  const handleWishlistToggle = async () => {
+    if (!user?.id || !item?.id) return;
+
+    try {
+      if (isWishlisted) {
+        // Remove from wishlist
+        const { error } = await supabase
+          .from("Wishlist")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("item_id", item.id);
+
+        if (error) {
+          console.error("Error removing from wishlist:", error);
+          return;
+        }
+
+        setIsWishlisted(false);
+      } else {
+        // Add to wishlist
+        const { error } = await supabase
+          .from("Wishlist")
+          .insert({
+            user_id: user.id,
+            item_id: item.id,
+          });
+
+        if (error) {
+          console.error("Error adding to wishlist:", error);
+          return;
+        }
+
+        setIsWishlisted(true);
+      }
+    } catch (error) {
+      console.error("Error toggling wishlist:", error);
+    }
+  };
+
   const handleAddComment = async (productId: number, newComment: string) => {
     if (!user?.id) return;
 
@@ -252,7 +318,7 @@ const FrontContent = ({
             styles.actionButton,
             isWishlisted && styles.activeActionButton,
           ]}
-          onPress={() => setIsWishlisted(!isWishlisted)}
+          onPress={handleWishlistToggle}
         >
           <FontAwesome
             name={isWishlisted ? "bookmark" : "bookmark-o"}

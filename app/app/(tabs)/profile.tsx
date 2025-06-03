@@ -86,7 +86,7 @@ export default function Profile() {
   const [friendsCount, setFriendsCount] = useState<number>(0);
   const { user_id } = useLocalSearchParams();
   const [showFriendsModal, setShowFriendsModal] = useState(false);
-  const [friendsList, setFriendsList] = useState([]);
+  const [friendsList, setFriendsList] = useState<FriendItem[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
   const isFocused = useIsFocused();
   const [lastCheckTime, setLastCheckTime] = useState<string | null>(null);
@@ -565,6 +565,10 @@ export default function Profile() {
         onClose={() => {
           setSelectedItem(null);
           setSelectedImage(null);
+          // Refresh wishlist data after modal closes
+          if (user?.id) {
+            fetchAllData();
+          }
         }}
         item={selectedItem!}
       />
@@ -910,5 +914,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginBottom: 4,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
   },
 });

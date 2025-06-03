@@ -1283,6 +1283,20 @@ export default function Feed() {
         )}
       </View>
 
+      {/* Swipe Indicators */}
+      {currentProduct && !hasVoted && (
+        <View style={styles.swipeIndicators}>
+          <View style={styles.swipeIndicator}>
+            <Text style={styles.swipeText}>Flop</Text>
+            {/* <FontAwesome name="arrow-left" size={24} style={styles.swipeArrow} /> */}
+          </View>
+          <View style={styles.swipeIndicator}>
+            {/* <FontAwesome name="arrow-right" size={24} style={styles.swipeArrow} /> */}
+            <Text style={styles.swipeText}>Hot</Text>
+          </View>
+        </View>
+      )}
+
       <CommentsModal
         visible={isCommentsModalVisible}
         comments={currentProduct ? comments[currentProduct.id] || [] : []}
@@ -1658,5 +1672,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 10,
+  },
+  swipeIndicators: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  swipeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  swipeText: {
+    fontSize: 23,
+    fontFamily: "Mandali",
+    fontWeight: "bold",
+    marginHorizontal: 8,
+    color: COLORS.accent,
+  },
+  swipeArrow: {
+    color: COLORS.accent,
+    marginBottom: 40,
   },
 });
