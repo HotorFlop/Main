@@ -14,6 +14,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { COLORS, SPACING, SIZES, FONTS } from "../../constants/theme";
 import { Stack } from "expo-router";
@@ -375,6 +376,92 @@ export default function Profile() {
     setShowFriendsModal(true);
   };
 
+  // Handle deleting a post
+  const handleDeletePost = async (postId: number) => {
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to delete this post? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from("SharedItem")
+                .delete()
+                .eq("id", postId)
+                .eq("userId", user?.id); // Ensure only the post owner can delete
+
+              if (error) {
+                console.error("Error deleting post:", error);
+                Alert.alert("Error", "Failed to delete post. Please try again.");
+                return;
+              }
+
+              // Remove the post from local state
+              setItems((prevItems) => 
+                prevItems.filter((item) => item.id !== postId)
+              );
+
+              Alert.alert("Success", "Post deleted successfully.");
+            } catch (error) {
+              console.error("Error deleting post:", error);
+              Alert.alert("Error", "Failed to delete post. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle removing a post from wishlist
+  const handleRemoveFromWishlist = async (postId: number) => {
+    Alert.alert(
+      "Remove from Wishlist",
+      "Are you sure you want to remove this item from your wishlist? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from("Wishlist")
+                .delete()
+                .eq("item_id", postId)
+                .eq("user_id", user?.id);
+
+              if (error) {
+                console.error("Error removing from wishlist:", error);
+                Alert.alert("Error", "Failed to remove item from wishlist. Please try again.");
+                return;
+              }
+
+              // Remove the item from local state
+              setWishlistItems((prevItems) => 
+                prevItems.filter((item) => item.id !== postId)
+              );
+
+              Alert.alert("Success", "Item removed from wishlist successfully.");
+            } catch (error) {
+              console.error("Error removing from wishlist:", error);
+              Alert.alert("Error", "Failed to remove item from wishlist. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -491,12 +578,21 @@ export default function Profile() {
                     <View style={styles.gridItemCard}>
                       <Image
                         source={{
-                          uri:
-                            item.imageUrl || "https://via.placeholder.com/150",
+                          uri: item.imageUrl || "https://via.placeholder.com/150",
                         }}
                         style={styles.gridImage}
                         resizeMode="cover"
                       />
+                      {/* Remove from wishlist button */}
+                      <TouchableOpacity
+                        style={styles.removeFromWishlistButton}
+                        onPress={(e) => {
+                          e.stopPropagation(); // Prevent opening the modal
+                          handleRemoveFromWishlist(item.id);
+                        }}
+                      >
+                        <FontAwesome name="bookmark" size={14} color="white" />
+                      </TouchableOpacity>
                       <View style={styles.gridItemContent}>
                         <Text
                           style={styles.gridItemTitle}
@@ -539,6 +635,16 @@ export default function Profile() {
                       style={styles.gridImage}
                       resizeMode="cover"
                     />
+                    {/* Delete button overlay */}
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={(e) => {
+                        e.stopPropagation(); // Prevent opening the modal
+                        handleDeletePost(item.id);
+                      }}
+                    >
+                      <FontAwesome name="times" size={14} color="white" />
+                    </TouchableOpacity>
                     <View style={styles.gridItemContent}>
                       <Text
                         style={styles.gridItemTitle}
@@ -920,5 +1026,21 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
+  },
+  deleteButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    padding: 2,
+    backgroundColor: "red",
+    borderRadius: 10,
+  },
+  removeFromWishlistButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    padding: 2,
+    backgroundColor: "red",
+    borderRadius: 10,
   },
 });

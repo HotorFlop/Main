@@ -22,6 +22,7 @@ import { Stack } from "expo-router";
 import { SvgXml } from "react-native-svg";
 import CommentsModal from "../../components/CommentsModal";
 import ReportModal from "../../components/ReportModal";
+import ReplyModal from "../../components/ReplyModal";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -101,6 +102,7 @@ export default function Feed() {
   const [imageHeight, setImageHeight] = useState<number | null>(null);
   const [isCommentsModalVisible, setCommentsModalVisible] = useState(false);
   const [isReportModalVisible, setReportModalVisible] = useState(false);
+  const [isReplyModalVisible, setReplyModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [votedItemIds, setVotedItemIds] = useState<number[]>([]);
   const [wishlistedItems, setWishlistedItems] = useState<number[]>([]);
@@ -1242,6 +1244,14 @@ export default function Feed() {
 
               <TouchableOpacity
                 style={styles.actionButton}
+                onPress={() => setReplyModalVisible(true)}
+              >
+                <FontAwesome name="reply" size={20} color="#666" />
+                <Text style={styles.actionText}>Reply</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
                 onPress={handleShare}
               >
                 <FontAwesome name="share" size={20} color="#666" />
@@ -1315,6 +1325,13 @@ export default function Feed() {
         onClose={() => setReportModalVisible(false)}
         onSubmit={handleReportPost}
         title="Report Post"
+      />
+
+      <ReplyModal
+        visible={isReplyModalVisible}
+        onClose={() => setReplyModalVisible(false)}
+        post={currentProduct}
+        currentUserId={user?.id}
       />
 
       {/* Results Overlay (After Voting) */}
@@ -1420,18 +1437,21 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 4, // Reduced from 8
-    height: 24, // Fixed height
+    justifyContent: "space-around",
+    marginTop: 4,
+    height: 24,
+    paddingHorizontal: 8,
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
   },
   actionText: {
     marginLeft: 5,
     color: "#666",
-    fontSize: 12, // Reduced font size
+    fontSize: 12,
   },
   resultsOverlay: {
     position: "absolute",
