@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { DMService, Message } from '../lib/dmService';
 import { COLORS, FONTS } from '../constants/theme';
 import { useFocusEffect } from '@react-navigation/native';
+import SharedPostCard from '../components/SharedPostCard';
 
 export default function Chat() {
   const { user } = useAuth();
@@ -46,6 +47,8 @@ export default function Chat() {
     React.useCallback(() => {
       if (user?.id && otherUserId) {
         markMessagesAsRead();
+        // Reload messages to catch any new ones (like shared posts)
+        loadMessages();
       }
     }, [user?.id, otherUserId])
   );
@@ -55,7 +58,12 @@ export default function Chat() {
 
     try {
       const msgs = await DMService.getMessages(user.id, otherUserId);
-      setMessages(msgs.reverse()); // Reverse to show newest at bottom
+      setMessages(msgs); // Don't reverse - keep chronological order (newest at bottom)
+      
+      // Scroll to bottom after messages are loaded
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: false });
+      }, 100);
     } catch (error) {
       console.error('Error loading messages:', error);
       Alert.alert('Error', 'Failed to load messages');
@@ -118,6 +126,22 @@ export default function Chat() {
     const isMyMessage = item.sender_id === user?.id;
     const showTimestamp = index === 0 || 
       new Date(item.created_at).getTime() - new Date(messages[index - 1].created_at).getTime() > 5 * 60 * 1000; // 5 minutes
+
+    if (item.message_type === 'shared_post') {
+      return (
+        <View style={styles.messageContainer}>
+          {showTimestamp && (
+            <Text style={styles.messageTimestamp}>
+              {formatMessageTime(item.created_at)}
+            </Text>
+          )}
+          <SharedPostCard 
+            sharedPostData={item.shared_post_data || '{}'}
+            isMyMessage={isMyMessage}
+          />
+        </View>
+      );
+    }
 
     return (
       <View style={styles.messageContainer}>
@@ -196,6 +220,14 @@ export default function Chat() {
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
           flatListRef.current?.scrollToEnd({ animated: true });
+        }}
+        onLayout={() => {
+          // Scroll to bottom when layout is complete
+          if (messages.length > 0) {
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, 50);
+          }
         }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

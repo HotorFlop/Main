@@ -11,6 +11,7 @@ export interface Message {
   media_url?: string;
   edited_at?: string;
   reply_to_id?: number;
+  shared_post_data?: string; // JSON string containing shared post data
 }
 
 export interface Conversation {
@@ -171,7 +172,8 @@ export class DMService {
     message: string, 
     messageType = 'text',
     mediaUrl?: string,
-    replyToId?: number
+    replyToId?: number,
+    sharedPostData?: string
   ): Promise<Message> {
     try {
       const messageData: any = {
@@ -188,6 +190,10 @@ export class DMService {
 
       if (replyToId) {
         messageData.reply_to_id = replyToId;
+      }
+
+      if (sharedPostData) {
+        messageData.shared_post_data = sharedPostData;
       }
 
       const { data, error } = await supabase

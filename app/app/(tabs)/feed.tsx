@@ -12,7 +12,6 @@ import {
   Linking,
   Share,
   Alert,
-  RefreshControl,
 } from "react-native";
 import { COLORS, SPACING, FONTS } from "../../constants/theme";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -28,6 +27,8 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useIsFocused } from "@react-navigation/native";
 import { moderationAPI } from "../../lib/moderation";
+import { DMService } from "../../lib/dmService";
+import ShareModal from "../../components/ShareModal";
 
 // You'll need to create these environment variables
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -106,6 +107,7 @@ export default function Feed() {
   const [refreshing, setRefreshing] = useState(false);
   const [votedItemIds, setVotedItemIds] = useState<number[]>([]);
   const [wishlistedItems, setWishlistedItems] = useState<number[]>([]);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   const position = useRef(new Animated.ValueXY()).current;
   const swipeAnimation = useRef(new Animated.Value(0)).current;
@@ -249,6 +251,12 @@ export default function Feed() {
       loadInitialFeed();
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (currentProduct && !hasVoted) {
+      cardVisibility.setValue(1);
+    }
+  }, [currentProduct, hasVoted]);
 
   useEffect(() => {
     if (allProducts?.length > 0 && user?.id) {
@@ -593,7 +601,7 @@ export default function Feed() {
       }).start(() => {
         Alert.alert(
           "End of Feed",
-          "You've seen all available posts. Pull down to refresh for new content."
+          "You've seen all available posts. Tap the refresh button (↻) for more content or go to your settings page to add new friends."
         );
       });
     }
@@ -788,16 +796,7 @@ export default function Feed() {
 
   const handleShare = async () => {
     if (!currentProduct) return;
-
-    try {
-      const result = await Share.share({
-        message: `Check out this product: ${currentProduct.title}\n${currentProduct.description}\n${currentProduct.url}`,
-        title: currentProduct.title,
-        url: currentProduct.url,
-      });
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
+    setShareModalVisible(true);
   };
 
   const getProfilePicUri = (user: { profile_pic?: string } | null) => {
@@ -1004,24 +1003,23 @@ export default function Feed() {
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
-
-  if (allProducts.length === 0) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.defaultText}>Nothing to vote on! Check back later or add some friends!</Text>
-      </View>
-    );
-  }
+  const handleClose = () => {
+    setHasVoted(false);
+    setVoteStats(null);
+    swipeAnimation.setValue(0);
+    yesBarHeight.setValue(0);
+    noBarHeight.setValue(0);
+    
+    // If this is the last item, hide the current product to show end-of-feed message
+    const isLastItem = currentIndex + 1 >= allProducts.length;
+    if (isLastItem) {
+      setCurrentProduct(null);
+    }
+  };
 
   const ResultsOverlay = () => {
-    // Remove the slideUp animation to simplify
+    const isLastItem = currentIndex + 1 >= allProducts.length;
+    
     return hasVoted ? (
       <View
         style={[
@@ -1074,26 +1072,74 @@ export default function Feed() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Next Item</Text>
+          <TouchableOpacity 
+            style={styles.nextButton} 
+            onPress={isLastItem ? handleClose : handleNext}
+          >
+            <Text style={styles.nextButtonText}>
+              {isLastItem ? "Close" : "Next Item"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
     ) : null;
   };
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (allProducts.length === 0) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.defaultText}>Nothing to vote on! Check back later or add some friends!</Text>
+      </View>
+    );
+  }
+
+  // End of feed - no more posts left
+  if (!currentProduct && allProducts.length > 0) {
+    return (
+      <View style={styles.container}>
+        {/* Squiggle Line - Positioned Behind Everything */}
+        <SvgXml xml={profileSvg} style={styles.squiggle} />
+
+        {/* Top Navigation Bar */}
+        <View style={styles.topNav}>
+          <Text style={styles.logo}>hot or flop?</Text>
+          <View style={styles.navIcons}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={handleManualRefresh}
+            >
+              <MaterialIcons name="refresh" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* End of feed message */}
+        <View style={styles.endOfFeedContainer}>
+          <FontAwesome name="check-circle" size={64} color={COLORS.accent} />
+          <Text style={styles.endOfFeedTitle}>No posts left in feed!</Text>
+          <Text style={styles.endOfFeedSubtitle}>Come back later for more content</Text>
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={handleManualRefresh}
+          >
+            <Text style={styles.refreshButtonText}>Refresh Feed</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // Card with info
   return (
     <View style={styles.container}>
-      {/* Add pull-to-refresh wrapper */}
-      <RefreshControl
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-        colors={["#3498db"]}
-      >
-        {/* Your existing content */}
-      </RefreshControl>
-
       {/* Squiggle Line - Positioned Behind Everything */}
       <SvgXml xml={profileSvg} style={styles.squiggle} />
 
@@ -1332,6 +1378,12 @@ export default function Feed() {
         onClose={() => setReplyModalVisible(false)}
         post={currentProduct}
         currentUserId={user?.id}
+      />
+
+      <ShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        post={currentProduct}
       />
 
       {/* Results Overlay (After Voting) */}
@@ -1663,10 +1715,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   refreshButton: {
-    padding: 8,
-    position: "absolute",
-    right: 16,
-    top: 0,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
   },
   productCardWrapper: {
     position: "relative",
@@ -1721,5 +1773,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 100,
     paddingTop: 200,
-  }
+  },
+  endOfFeedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  endOfFeedTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    fontFamily: "Mandali",
+    color: "#000",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  endOfFeedSubtitle: {
+    fontSize: 16,
+    color: "#666",
+    fontFamily: "Mandali",
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  refreshButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    fontFamily: "Mandali",
+  },
 });

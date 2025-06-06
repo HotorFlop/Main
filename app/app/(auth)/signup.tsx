@@ -101,110 +101,103 @@ export default function SignUp() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.keyboardAvoidingContainer}
     >
-      <ScrollView>
-    <View style={styles.container}>
-      <Text style={styles.title}>hot or flop?</Text>
-      <Text style={styles.subtitle}>Create your account</Text>
-
-      {formError && <Text style={styles.errorText}>{formError}</Text>}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name"
-        placeholderTextColor="#A9A9A9"
-        autoCapitalize="words"
-        value={fullName}
-        onChangeText={setFullName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        placeholderTextColor="#A9A9A9"
-        autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number"
-        placeholderTextColor="#A9A9A9"
-        keyboardType="phone-pad"
-        autoCapitalize="none"
-        value={phoneNumber}
-        onChangeText={setPhoneNumber}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#A9A9A9"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#A9A9A9"
-        secureTextEntry
-        autoCorrect={false}
-        textContentType="none"
-        autoComplete="off"
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        placeholderTextColor="#A9A9A9"
-        secureTextEntry
-        autoCorrect={false}
-        textContentType="none"
-        autoComplete="off"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
-
-      <TouchableOpacity
-        style={[styles.button]}
-        onPress={handleSignUp}
-      // disabled={!isButtonEnabled || loading}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {loading ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text style={styles.buttonText}>Create Account</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.container}>
+          <Text style={styles.title}>hot or flop?</Text>
+          <Text style={styles.subtitle}>Create your account</Text>
 
-      <TouchableOpacity onPress={() => router.push("/login")}>
-        <Text style={styles.signupText}>Already have an account? Log in</Text>
-      </TouchableOpacity>
-    </View>
-    </ScrollView>
+          {formError && <Text style={styles.errorText}>{formError}</Text>}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            placeholderTextColor="#A9A9A9"
+            autoCapitalize="words"
+            value={fullName}
+            onChangeText={setFullName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#A9A9A9"
+            autoCapitalize="none"
+            value={username}
+            onChangeText={setUsername}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            placeholderTextColor="#A9A9A9"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#A9A9A9"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#A9A9A9"
+            secureTextEntry
+            autoCorrect={false}
+            textContentType="none"
+            autoComplete="off"
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            placeholderTextColor="#A9A9A9"
+            secureTextEntry
+            autoCorrect={false}
+            textContentType="none"
+            autoComplete="off"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+
+          <TouchableOpacity
+            style={[styles.button]}
+            onPress={handleSignUp}
+          // disabled={!isButtonEnabled || loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.buttonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => router.push("/login")}>
+            <Text style={styles.signupText}>Already have an account? Log in</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardAvoidingContainer: {
-    flex: 1,
-    backgroundColor: "#FFACAC",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFACAC",
-  },
   container: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 100,
-    paddingBottom: 20,
+    paddingBottom: 40,
     backgroundColor: "#FFACAC",
+    minHeight: "100%",
   },
   title: {
     fontSize: 32,
@@ -234,6 +227,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: "center",
+    marginTop: 10,
   },
   buttonDisabled: {
     backgroundColor: "#D3D3D3", // Gray for disabled state
@@ -256,5 +250,13 @@ const styles = StyleSheet.create({
     width: "100%",
     textAlign: "center",
     marginBottom: 20,
+  },
+  keyboardAvoidingContainer: {
+    flex: 1,
+    backgroundColor: "#FFACAC",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
 });

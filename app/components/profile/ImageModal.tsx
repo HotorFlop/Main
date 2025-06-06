@@ -8,7 +8,7 @@ import {
   Text,
   ScrollView,
   Linking,
-  Share,
+  StatusBar,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { FontAwesome } from "@expo/vector-icons";
@@ -20,12 +20,13 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { createClient } from "@supabase/supabase-js";
+import CommentsModal from "../CommentsModal";
+import ShareModal from "../ShareModal";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 import Ratings from "./Ratings";
-import CommentsModal from "../CommentsModal";
-import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
@@ -93,6 +94,7 @@ const FrontContent = ({
 }) => {
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [comments, setComments] = useState<{ [key: string]: Comment[] }>({});
+  const [shareModalVisible, setShareModalVisible] = useState(false);
   const { user } = useAuth();
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -214,18 +216,9 @@ const FrontContent = ({
     fetchComments();
   }, [item?.id]);
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!item) return;
-
-    try {
-      const result = await Share.share({
-        message: `Check out this product: ${item.title}\n${item.description}\n${item.url}`,
-        title: item.title,
-        url: item.url,
-      });
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
+    setShareModalVisible(true);
   };
   // const {user} = useAuth();
 
@@ -308,7 +301,7 @@ const FrontContent = ({
           <Text style={styles.actionText}>Comments</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <FontAwesome name="share" size={20} color="#666" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
@@ -341,6 +334,24 @@ const FrontContent = ({
           if (item) {
             handleAddComment(item.id, newComment);
           }
+        }}
+      />
+
+      <ShareModal
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        post={{
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          imageUrl: imageUrl,
+          price: item.price,
+          url: item.url || '',
+          user: {
+            id: item.user?.id || '',
+            username: item.user?.username || '',
+            profile_pic: item.user?.profile_pic,
+          },
         }}
       />
     </View>
