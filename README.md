@@ -5,9 +5,9 @@ Follow these steps to set up and use the **Hot or Flop** app:
 1. **Clone the repository** to your local machine:
    ```bash
    git clone https://github.com/HotorFlop/Main.git
-2. Open 2 terminal windows. In one window, navigate to the `Main/app` directory:
+2. Open 2 terminal windows. In one window, navigate to the `Main/app` directory
 
-3. In the other window, navigate to the `Main/backend` directory:
+3. In the other window, navigate to the `Main/backend` directory
 
 4. In both windows, install the dependencies with `npm install`
 
